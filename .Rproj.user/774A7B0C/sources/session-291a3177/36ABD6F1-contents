@@ -1,0 +1,99 @@
+```{r}
+salary_potential %>%
+  filter(stem_percent < 25) %>%
+  ggplot(aes(x=stem_percent, y=make_world_better_percent)) +
+  geom_point()
+```
+
+
+
+
+
+
+```{r}
+
+# Load the necessary libraries
+library(ggplot2)
+
+# Example 1: Bar Plot of School Types
+ggplot(tuition_cost, aes(x = type)) +
+  geom_bar() +
+  labs(title = "Distribution of School Types", x = "School Type", y = "Count")
+
+# Example 2: Histogram of Tuition Costs
+ggplot(tuition_cost, aes(x = in_state_tuition)) +
+  geom_histogram(binwidth = 100) +
+  labs(title = "Histogram of In-State Tuition Costs", x = "Tuition Cost", y = "Frequency")
+
+# Example 3: Box Plot of Net Costs by Income Level
+ggplot(tuition_income, aes(x = income_lvl, y = net_cost)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of Net Costs by Income Level", x = "Income Level", y = "Net Cost")
+
+# Example 4: Scatter Plot of Early Career Pay vs. Mid Career Pay
+ggplot(salary_potential, aes(x = early_career_pay, y = mid_career_pay)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Early vs. Mid Career Pay", x = "Early Career Pay", y = "Mid Career Pay")
+
+# Example 5: Time Series Plot of Historical Tuition Costs
+ggplot(historical_tuition, aes(x = year, y = tuition_cost, color = type)) +
+  geom_line() +
+  labs(title = "Tuition Costs Over Time", x = "Year", y = "Tuition Cost") +
+  facet_wrap(~ type) +
+  coord_flip()
+
+# Example 6: Bar Plot of Total Enrollment by Category
+ggplot(diversity_school, aes(x = category, y = total_enrollment)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Enrollment by Category", x = "Category", y = "Total Enrollment")
+
+# Example 7: Heatmap of Correlations
+correlation_matrix <- cor(salary_potential[, c("early_career_pay", "mid_career_pay", "make_world_better_percent", "stem_percent")])
+ggplot(data = as.data.frame(as.table(correlation_matrix)), aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Correlation Heatmap")
+
+# Example 8: Stacked Bar Plot of Income Levels
+ggplot(tuition_income, aes(x = year, fill = income_lvl)) +
+  geom_bar() +
+  labs(title = "Income Levels Over Time", x = "Year", y = "Count") +
+  theme(legend.position = "top")
+```
+
+
+Research Question: Are there significant differences in early career pay between public and private schools?
+  
+  ```{r}
+# Merge the datasets based on the school name
+merged_data <- left_join(tuition_cost, salary_potential, by = "name")
+
+# Filter the merged data to remove missing values
+merged_data <- merged_data %>%
+  filter(!is.na(early_career_pay))
+
+# Create a box plot to compare early career pay for public and private schools
+ggplot(merged_data, aes(x = type, y = early_career_pay, fill = type)) +
+  geom_boxplot() +
+  labs(title = "Early Career Pay Comparison: Public vs. Private Schools", x = "School Type", y = "Early Career Pay") +
+  scale_fill_manual(values = c("Public" = "blue", "Private" = "red")) +
+  scale_y_continuous(labels = scales::comma)   # Format y-axis labels
+
+
+ggplot(merged_data, aes(x = type, y = early_career_pay, fill = type)) +
+  geom_violin() +
+  labs(title = "Early Career Pay Comparison: Public vs. Private Schools", x = "School Type", y = "Early Career Pay") +
+  scale_fill_manual(values = c("Public" = "blue", "Private" = "red")) +
+  theme_minimal()
+
+
+library(ggbeeswarm)
+
+ggplot(merged_data, aes(x = type, y = early_career_pay, color = type)) +
+  geom_beeswarm() +
+  labs(title = "Early Career Pay Comparison: Public vs. Private Schools", x = "School Type", y = "Early Career Pay") +
+  scale_color_manual(values = c("Public" = "blue", "Private" = "red")) +
+  theme_minimal()
+
+merged_data
+```

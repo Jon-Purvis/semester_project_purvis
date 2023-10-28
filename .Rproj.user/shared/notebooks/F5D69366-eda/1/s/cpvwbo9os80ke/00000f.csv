@@ -1,0 +1,7 @@
+"0","top_ten_highest_stem_states <- average_stem_percent_by_state %>%"
+"0","  arrange(desc(avg_stem_percent)) %>%"
+"0","  head(10)"
+"0",""
+"0","top_ten_lowest_stem_states <- average_stem_percent_by_state %>%"
+"0","  arrange(avg_stem_percent) %>%"
+"0","  head(10)"
