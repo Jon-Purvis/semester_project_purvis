@@ -51,7 +51,7 @@ diversity_school
 ```
 
 
-## Is there a best state/university to go to college/university
+## Is there a best state to go to college/university
 
 ```{r}
 # Calculate the average early career salary by state
@@ -472,7 +472,7 @@ most_diverse_plot <-top_ten_most_diverse %>%
 least_diverse_plot <- top_ten_least_diverse %>%
   ggplot(aes(x = reorder(state, -total_diversity), y = total_diversity)) +
   geom_bar(stat = "identity", fill = "lightpink") +
-  labs(title = "Top Ten Least Diverse States", x = "State", y = "Total Diversity") +
+  labs(title = "Top Ten Least Diverse States", x = "State", y = "Total Diversity Percent") +
   theme_minimal() +
   coord_flip()
 
