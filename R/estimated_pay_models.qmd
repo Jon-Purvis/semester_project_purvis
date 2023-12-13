@@ -1,0 +1,262 @@
+---
+title: "test"
+format: html
+---
+
+```{r}
+# load useful packages
+library(tidyverse)
+library(tidymodels)
+library(vip)
+library(RColorBrewer) 
+library(stringdist)
+library(dplyr)
+
+
+# Set protocols and themes
+theme_set(theme_minimal(base_size = 12))
+tidymodels_prefer()
+doParallel::registerDoParallel()
+
+# Load the data
+salary_potential <- read_csv("data/salary_potential.csv")
+
+tuition_cost <- read_csv("data/tuition_cost.csv")
+
+tuition_income <- read_csv("data/tuition_income.csv")
+
+diversity_school <- read_csv("data/diversity_school.csv")
+
+
+# Merge all the data sets together
+
+diversity_cost <- left_join(tuition_cost, diversity_school, by = c("name", "state"))
+
+glimpse(diversity_cost)
+
+```
+
+```{r}
+tuition_income
+```
+
+```{r}
+state_mapping <- c(
+  "AL" = "Alabama",
+  "AK" = "Alaska",
+  "AZ" = "Arizona",
+  "AR" = "Arkansas",
+  "CA" = "California",
+  "CO" = "Colorado",
+  "CT" = "Connecticut",
+  "DE" = "Delaware",
+  "FL" = "Florida",
+  "GA" = "Georgia",
+  "HI" = "Hawaii",
+  "ID" = "Idaho",
+  "IL" = "Illinois",
+  "IN" = "Indiana",
+  "IA" = "Iowa",
+  "KS" = "Kansas",
+  "KY" = "Kentucky",
+  "LA" = "Louisiana",
+  "ME" = "Maine",
+  "MD" = "Maryland",
+  "MA" = "Massachusetts",
+  "MI" = "Michigan",
+  "MN" = "Minnesota",
+  "MS" = "Mississippi",
+  "MO" = "Missouri",
+  "MT" = "Montana",
+  "NE" = "Nebraska",
+  "NV" = "Nevada",
+  "NH" = "New Hampshire",
+  "NJ" = "New Jersey",
+  "NM" = "New Mexico",
+  "NY" = "New York",
+  "NC" = "North Carolina",
+  "ND" = "North Dakota",
+  "OH" = "Ohio",
+  "OK" = "Oklahoma",
+  "OR" = "Oregon",
+  "PA" = "Pennsylvania",
+  "RI" = "Rhode Island",
+  "SC" = "South Carolina",
+  "SD" = "South Dakota",
+  "TN" = "Tennessee",
+  "TX" = "Texas",
+  "UT" = "Utah",
+  "VT" = "Vermont",
+  "VA" = "Virginia",
+  "WA" = "Washington",
+  "WV" = "West Virginia",
+  "WI" = "Wisconsin",
+  "WY" = "Wyoming"
+)
+
+tuition_income$state <- state_mapping[tuition_income$state]
+```
+
+```{r}
+tuition_income
+```
+
+```{r}
+# Remove duplicates from diversity_cost
+diversity_cost <- diversity_cost[!duplicated(diversity_cost[, c("name", "state")]), ]
+
+# Remove duplicates from tuition_income
+tuition_income <- tuition_income[!duplicated(tuition_income[, c("name", "state")]), ]
+```
+
+```{r}
+# Perform the left join after standardizing state names
+income_cost <- left_join(diversity_cost, tuition_income, by = c("name", "state"))
+```
+
+```{r}
+income_cost
+```
+
+```{r}
+salary_potential
+```
+
+```{r}
+# Rename 'state_name' to 'state' in salary_potential
+salary_potential <- rename(salary_potential, state = state_name)
+
+# Standardize state names by removing hyphens
+salary_potential$state <- gsub("-", " ", salary_potential$state)
+```
+
+```{r}
+salary_potential
+```
+
+```{r}
+combined_data <- left_join(income_cost, salary_potential, by = c("name", "state"))
+
+# Filter out rows with missing early or mid-career pay
+combined_data <- combined_data %>%
+  filter(!is.na(early_career_pay) & !is.na(mid_career_pay))
+```
+
+```{r}
+# Finally all 4 data sets are joined lol
+combined_data
+
+combined_data %>%
+  write_csv(here::here("data", "combined_data.csv"))
+```
+
+```{r}
+fit_lr_boots <- function(split){
+  glm(early_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent,
+      data=analysis(split))
+}
+```
+
+```{r}
+boots <- bootstraps(combined_data, times = 2000)
+
+boot_models <-
+  boots %>% 
+  mutate(model = map(splits, fit_lr_boots),
+         coef_info = map(model, tidy))
+
+boot_coefs <- 
+  boot_models %>% 
+  unnest(coef_info)
+
+percentile_intervals <- int_pctl(boot_models, coef_info)
+```
+
+```{r}
+ggplot(boot_coefs, aes(estimate)) +
+  geom_histogram(bins = 30,color="white") +
+  facet_wrap( ~ term, scales = "free") +
+  geom_vline(aes(xintercept = .lower), data = percentile_intervals, col = "blue") +
+  geom_vline(aes(xintercept = .upper), data = percentile_intervals, col = "blue")
+```
+
+
+```{r}
+combined_data <- combined_data %>%
+  mutate(log_early_career_pay = log(early_career_pay),
+         log_mid_career_pay = log(mid_career_pay))
+
+# Model for pay ~ 
+combined_data_split <- initial_split(combined_data)
+combined_data_train <- training(combined_data_split)
+combined_data_test <- testing(combined_data_split)
+
+
+# Early Pay by everything
+# ---------
+early_pay_intervals <- reg_intervals(log_early_career_pay ~ state + total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_early_coeffs <- early_pay_intervals %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_early_coeffs
+
+
+# Mid Pay by everything
+# ---------
+mid_pay_intervals <- reg_intervals(log_mid_career_pay ~ state + total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs <- mid_pay_intervals %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs
+```
+```{r}
+# Same thing without state
+
+# Early Pay by !state
+# ---------
+early_pay_intervals_2 <- reg_intervals(log_early_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_early_coeffs_2 <- early_pay_intervals_2 %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_early_coeffs_2
+
+
+# Mid Pay by !state
+# ---------
+mid_pay_intervals_2 <- reg_intervals(log_mid_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs_2 <- mid_pay_intervals_2 %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs_2
+```
+
+

@@ -1,8 +1,0 @@
-"0","diversity_category_plot <- diversity_school_cleaned %>%"
-"0","  ggplot(aes(x = state, fill = category)) +"
-"0","  geom_bar() +"
-"0","  labs(title = ""Distribution of Categories in Universities"", x = ""Category"") +"
-"0","  theme_minimal() +"
-"0","  coord_flip()"
-"0",""
-"0","diversity_category_plot"

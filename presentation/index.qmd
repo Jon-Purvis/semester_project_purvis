@@ -1,0 +1,322 @@
+---
+title: "Higher Education Salaries Presentation"
+subtitle: "Impacts of Education and Demographics on Mid/Early Career Pay"
+author: Jonathon Purvis
+institute: University Of Scranton
+format:
+  revealjs:
+    self-contained: true
+    self_contained-math: true
+bibliography: presentation_bib.bib
+---
+
+```{r}
+#| echo: false
+#| include: false
+
+library(tidyverse) # wrangling, plots etc.
+library(tidymodels) # modeling
+library(skimr) # data summary
+library(GGally) # paired plots
+library(patchwork) # for combining plots
+library(kableExtra) # for extra table formatting 
+library(dplyr)
+
+tuition_cost <- read_csv("../data/tuition_cost.csv")
+tuition_income <- read_csv("../data/tuition_income.csv")
+salary_potential <- read_csv("../data/salary_potential.csv")
+historical_tuition <- read_csv("../data/historical_tuition.csv")
+diversity_school <- read_csv("../data/diversity_school.csv")
+combined_data <- read_csv("../data/combined_data.csv")
+states_df <- map_data("state")
+```
+
+# Research Question
+
+::: {.incremental}
+
+- Inflation is a popular topic and affects everyone
+- Our best weapon against inflation is understanding what factors affect making more money
+- **We would like to know impacts of tuition costs, institutional type, STEM percentage, total enrollment, state, and student demographics on mid/early career pay.**
+
+:::
+
+# Tuition Cost Data
+
+```{r}
+tuition_cost %>%
+  head(2) %>%
+  kable()
+```
+
+# Tuition Income Data
+
+```{r}
+tuition_income %>%
+  head(2) %>%
+  kable()
+```
+
+# Diversity Data
+
+```{r}
+diversity_school %>%
+  head(2) %>%
+  kable()
+```
+
+# Salary Data
+
+```{r}
+salary_potential %>%
+  head(2) %>%
+  kable()
+```
+
+
+# Salary Variables
+
+```{r}
+#| message: false
+
+early_pay_distribution <- ggplot(salary_potential, aes(x = early_career_pay)) +
+  geom_histogram(color = "#512d6d", fill = "lightblue") +
+  labs(x = "Early Career Pay (USD)", y = "Count") +
+  theme_minimal()
+
+mid_pay_distribution <- ggplot(salary_potential, aes(x = mid_career_pay)) +
+  geom_histogram(color = "#512d6d", fill = "lightblue") +
+  labs(x = "Mid Career Pay (USD)", y = "Count") +
+  theme_minimal()
+
+(mid_pay_distribution + early_pay_distribution)
+```
+
+# Tuition Cost Variables
+
+```{r}
+#| warning: false
+
+g1 <- ggplot(tuition_cost, aes(x = "", fill = type)) +
+  geom_bar(width = 1, color = "white", alpha = 0.7) +
+  coord_polar("y") +
+  labs(title = "Distribution of Institution Types", fill = "Institution Type") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+# Assuming 'data' is your data frame and 'degree_length' is the variable of interest
+g2 <- ggplot(tuition_cost, aes(x = "", fill = degree_length)) +
+  geom_bar(width = 1, color = "white", alpha = 0.7) +
+  coord_polar("y") +
+  labs(title = "Distribution of Degree Lengths", fill = "Degree Length") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+(g1 + g2)
+```
+
+# Tuition Income Variables
+
+```{r}
+g3 <- ggplot(tuition_income, aes(x = total_price)) +
+  geom_histogram(fill = "lightblue", color = "darkblue", bins = 30, alpha = 0.7) +
+  labs(title = "Distribution of Total Price", x = "Total Price", y = "Count") +
+  theme_minimal()
+
+g4 <- ggplot(tuition_income, aes(x = net_cost)) +
+  geom_histogram(fill = "lightblue", color = "darkblue", bins = 30, alpha = 0.7) +
+  labs(title = "Distribution of Net Cost", x = "Net Cost", y = "Count") +
+  theme_minimal()
+
+(g3 + g4)
+```
+
+# Alumni Percentages Variables
+
+```{r}
+#| warning: false
+
+g5 <- salary_potential %>% 
+  ggplot(aes(x = stem_percent)) +
+  geom_histogram(binwidth = 2, fill = "lightblue", color = "darkblue", alpha = 0.7) +
+  labs(title = "Distribution of STEM Percentage", x = "STEM Percentage", y = "Frequency") +
+  theme_minimal()
+
+g6 <- salary_potential %>%
+  ggplot(aes(x = make_world_better_percent)) +
+  geom_histogram(binwidth = 2, fill = "lightblue", color = "darkblue", alpha = 0.7) +
+  labs(title = "Distribution of Make World Better Percent", 
+       x = "'Make World Better' Percentage", y = "Frequency") +
+  theme_minimal()
+
+(g5 + g6)
+```
+
+# Total Enrollment
+
+```{r}
+filtered_data <- diversity_school %>%
+  filter(total_enrollment > 0)
+
+filtered_data
+
+# Histogram for total enrollment
+ggplot(filtered_data, aes(x = log(total_enrollment))) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "darkblue",boundary = 1) +
+  labs(title = "Histogram of Total Enrollment", x = "Total Enrollment", y = "Frequency") +
+  theme_minimal()
+```
+
+# Diversity
+
+```{r}
+ggplot(diversity_school, aes(x = category, y = enrollment)) +
+  geom_bar(stat = "identity", color = "lightblue", alpha = 0.7) +
+  labs(title = "Enrollment by Category", x = "Category", y = "Enrollment Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+# Variable Relationships
+
+```{r}
+# Make world better percent, mid pay
+mbp <- ggplot(salary_potential, aes(x = make_world_better_percent, y = mid_career_pay)) +
+  geom_point(data = subset(salary_potential, !is.na(make_world_better_percent))) +
+  geom_smooth(color = "orange") + 
+  labs(
+       x = "% of Alumni Making the World Better",
+       y = "Mid Career Pay (USD)")
+
+
+# Stem percent, mid pay
+spp <- ggplot(salary_potential, aes(x = stem_percent, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(color = "orange") +  
+  labs(x = "STEM Percentage", y = "Mid Career Pay (USD)")
+
+(mbp + spp)
+```
+
+# Relationships (Continued)
+
+```{r}
+# Merge salary potential and tuition cost
+salary_cost <- merge(salary_potential, tuition_cost, by = "name", all.x = TRUE)
+
+# Type, early pay
+t1 <- ggplot(filter(salary_cost, !is.na(type) & early_career_pay), 
+       aes(x = type, y = early_career_pay)) +
+      geom_boxplot() +
+      labs(x = "Institution Type", y = "Early Career Pay (USD)")
+
+
+# Type, mid pay
+t2 <- ggplot(filter(salary_cost, !is.na(type) & mid_career_pay), 
+       aes(x = type, y = mid_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Institution Type", y = "Mid Career Pay (USD)")
+
+
+# Degree length, early pay
+dl1 <- ggplot(filter(salary_cost, !is.na(degree_length) & early_career_pay), 
+       aes(x = degree_length, y = early_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Degree Length", y = "Early Career Pay (USD)")
+
+
+# Degree length, mid pay
+dl2 <- ggplot(filter(salary_cost, !is.na(degree_length) & mid_career_pay), 
+       aes(x = degree_length, y = mid_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Degree Length", y = "Mid Career Pay (USD)")
+
+(t1 + t2) / (dl1 + dl2)
+```
+
+# Relationships Final
+
+```{r}
+# Standardize state names
+states_df <- states_df %>%
+  mutate(region = tolower(gsub("[_ ]", "", region)))
+
+salary_potential_cleaned <- salary_potential %>%
+  mutate(state_name = tolower(gsub("[_ ]", "", state_name))) %>%
+  mutate(state_name = gsub("-", "", state_name))
+
+# Left join the data sets, keeping all state boundaries
+merged_data <- left_join(states_df, salary_potential_cleaned, by = c("region" = "state_name"))
+
+mid_pay_chloropleth <- merged_data %>%
+  ggplot() +
+  geom_polygon(aes(long, lat, group = group, fill = mid_career_pay), color = "darkgray") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", labels = scales::comma) +  
+  labs(title = "Mid Career Pay by State", fill = "Mid Career Pay") +
+  theme_minimal()
+
+mid_pay_chloropleth
+```
+
+# Models
+
+```{r}
+combined_data <- combined_data %>%
+  mutate(log_early_career_pay = log(early_career_pay),
+         log_mid_career_pay = log(mid_career_pay))
+
+# Model for pay ~ 
+combined_data_split <- initial_split(combined_data)
+combined_data_train <- training(combined_data_split)
+combined_data_test <- testing(combined_data_split)
+
+# Mid Pay by everything
+# ---------
+mid_pay_intervals <- reg_intervals(log_mid_career_pay ~ state + total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs <- mid_pay_intervals %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs
+```
+
+# Model (Continued)
+
+```{r}
+mid_pay_intervals_2 <- reg_intervals(log_mid_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs_2 <- mid_pay_intervals_2 %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs_2
+```
+
+
+# Conclusions
+
+- Evidence that state, stem percent, and percentage of alumni who think they are making the world a better place influence career salary
+
+- More state data would help with more accurate results
+
+
+
+
+
+
+
+
+

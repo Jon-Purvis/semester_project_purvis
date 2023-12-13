@@ -116,6 +116,8 @@ entry_pay_chloropleth
 mid_pay_chloropleth
 ```
 
+
+
 ```{r}
 # Sort the data frame to find the top ten states with the highest average early career salaries
 top_ten_early <- head(arrange(average_early_career_pay, desc(avg_early_career_pay)), 10)
@@ -521,4 +523,8 @@ least_expensive_dorm_plot <- top_ten_least_expensive %>%
 
 most_expensive_dorm_plot
 least_expensive_dorm_plot
+```
+
+```{r}
+# Make more plots that relate to finding out what affects salaries
 ```

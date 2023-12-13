@@ -1,0 +1,235 @@
+---
+title: "Exploratory Data Analysis v2"
+author: "Jon P"
+format: html
+---
+
+```{r}
+#| message: false
+
+# load packages
+library(tidyverse) # wrangling, plots etc.
+library(GGally) # paired plots
+library(patchwork) # for combining plots
+library(skimr) # data summary
+library(corrplot)
+library(sf)
+library(stringr)
+library(dplyr)
+library(plotly)
+
+# set plot theme
+theme_set(theme_minimal(base_size = 12))
+
+tuition_cost <- read_csv("../data/tuition_cost.csv")
+tuition_income <- read_csv("../data/tuition_income.csv")
+salary_potential <- read_csv("../data/salary_potential.csv")
+historical_tuition <- read_csv("../data/historical_tuition.csv")
+diversity_school <- read_csv("../data/diversity_school.csv")
+states_df <- map_data("state")
+```
+
+```{r}
+tuition_cost
+```
+
+```{r}
+tuition_income
+```
+
+```{r}
+salary_potential
+```
+
+```{r}
+historical_tuition
+```
+
+```{r}
+diversity_school
+```
+
+## The Impacts of Education and Demographics on Mid and Early Career Pay
+
+### Predictors: 
+
+#### No merge
+  - state
+  - make_world_better_percent
+  - stem_percent
+  
+```{r}
+# State, early pay
+ggplot(salary_potential, aes(x = state_name, y = early_career_pay)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  coord_flip() +  
+  labs(title = "Average Early Career Pay by State",
+       x = "State",
+       y = "Average Early Career Pay (USD)")
+
+
+# State, mid pay
+ggplot(salary_potential, aes(x = state_name, y = mid_career_pay)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  coord_flip() +  
+  labs(title = "Average Mid Career Pay by State",
+       x = "State",
+       y = "Average Mid Career Pay (USD)")
+
+
+# Make world better percent, mid pay
+ggplot(salary_potential, aes(x = make_world_better_percent, y = mid_career_pay)) +
+  geom_point(data = subset(salary_potential, !is.na(make_world_better_percent))) +
+  geom_smooth(method = "lm", se = FALSE, color = "orange", formula = y ~ x, data = subset(salary_potential, !is.na(make_world_better_percent))) +
+  labs(title = "Impact of Alumni Making the World Better on Mid Career Pay",
+       x = "Percent of Alumni Making the World Better",
+       y = "Mid Career Pay (USD)")
+
+
+# Stem percent, mid pay
+ggplot(salary_potential, aes(x = stem_percent, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "orange", formula = y ~ x) +  
+  labs(title = "Impact of STEM Percentage on Mid Career Pay",
+       x = "STEM Percentage",
+       y = "Mid Career Pay (USD)")
+```
+  
+#### Tuition_cost data set merge
+  - type
+  - degree-length
+  
+```{r}
+# Merge salary potential and tuition cost
+salary_cost <- merge(salary_potential, tuition_cost, by = "name", all.x = TRUE)
+
+
+# Type, early pay
+ggplot(filter(salary_cost, !is.na(type) & early_career_pay), 
+       aes(x = type, y = early_career_pay, fill = type)) +
+  geom_boxplot() +
+  labs(title = "Early Career Pay by Institution Type",
+       x = "Institution Type",
+       y = "Early Career Pay (USD)")
+
+
+# Type, mid pay
+ggplot(filter(salary_cost, !is.na(type) & mid_career_pay), 
+       aes(x = type, y = mid_career_pay, fill = type)) +
+  geom_boxplot() +
+  labs(title = "Mid Career Pay by Institution Type",
+       x = "Institution Type",
+       y = "Mid Career Pay (USD)")
+
+
+# Degree length, early pay
+ggplot(filter(salary_cost, !is.na(degree_length) & early_career_pay), 
+       aes(x = degree_length, y = early_career_pay, fill = degree_length)) +
+  geom_boxplot() +
+  labs(title = "Early Career Pay by Degree Length",
+       x = "Degree Length",
+       y = "Early Career Pay (USD)")
+
+
+# Degree length, mid pay
+ggplot(filter(salary_cost, !is.na(degree_length) & mid_career_pay), 
+       aes(x = degree_length, y = mid_career_pay, fill = degree_length)) +
+  geom_boxplot() +
+  labs(title = "Mid Career Pay by Degree Length",
+       x = "Degree Length",
+       y = "Mid Career Pay (USD)")
+
+
+# Type and Degree length, early pay
+ggplot(filter(salary_cost, !is.na(degree_length) & !is.na(early_career_pay) & !is.na(type)), 
+       aes(x = degree_length, y = early_career_pay, fill = type)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  labs(title = "Average Early Career Pay by Degree Length and Institution Type",
+       x = "Degree Length",
+       y = "Average Early Career Pay (USD)")
+
+
+# Type and Degree length, early pay
+ggplot(filter(salary_cost, !is.na(degree_length) & !is.na(mid_career_pay) & !is.na(type)), 
+       aes(x = degree_length, y = mid_career_pay, fill = type)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  labs(title = "Average Mid Career Pay by Degree Length and Institution Type",
+       x = "Degree Length",
+       y = "Average Mid Career Pay (USD)")
+```
+
+#### Tuition_income data set merge
+  - total_price
+  - net_cost
+  - income_lvl
+  
+```{r}
+#| warning: false
+
+# Merge salary potential and tuition income
+salary_income <- left_join(tuition_income, salary_potential, by = "name")
+
+salary_income <- salary_income %>%
+  filter(!is.na(mid_career_pay))
+
+
+# Total price, mid pay
+ggplot(salary_income, aes(x = total_price, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +  
+  labs(title = "Mid Career Pay vs Total Price",
+       x = "Total Price (USD)",
+       y = "Mid Career Pay (USD)")
+
+# Net cost, mid pay 
+ggplot(salary_income, aes(x = net_cost, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") + 
+  labs(title = "Mid Career Pay vs Net Cost",
+       x = "Net Cost (USD)",
+       y = "Mid Career Pay (USD)")
+
+
+# Income lvl, mid pay
+ggplot(salary_income, aes(x = income_lvl, y = mid_career_pay)) +
+  geom_boxplot() +
+  labs(title = "Mid Career Pay by Income Level",
+       x = "Income Level",
+       y = "Mid Career Pay (USD)")
+
+
+# Correlation Heatmap: Tuition, net cost, and mid pay
+cor_data_income <- select(salary_income, total_price, net_cost, mid_career_pay)
+correlation_matrix_income <- cor(cor_data_income, use = "complete.obs")
+corrplot(correlation_matrix_income, method = "color", addrect = 2)
+```
+
+
+#### Diversity_school data set merge
+  _ total_enrollment
+  - category
+
+```{r}
+# Merge diversity school and salary potential
+diversity_salary <- left_join(diversity_school, salary_potential, by = "name")
+
+diversity_salary <- diversity_salary %>%
+  filter(!is.na(mid_career_pay))
+
+# Total enrollment, mid pay
+ggplot(diversity_salary, aes(x = total_enrollment, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") + 
+  labs(title = "Mid Career Pay vs Total Enrollment",
+       x = "Total Enrollment",
+       y = "Mid Career Pay (USD)")
+
+# Category, mid pay
+ggplot(diversity_salary, aes(x = category, y = mid_career_pay, fill = category)) +
+  geom_boxplot() +
+  coord_flip() + 
+  labs(title = "Mid Career Pay by Category",
+       x = "Category",
+       y = "Mid Career Pay (USD)")
+```
+

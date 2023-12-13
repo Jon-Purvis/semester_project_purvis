@@ -1,34 +1,660 @@
 ---
-title: "Title
+title: "Higher Education Salaries"
+subtitle: "The Impacts of Education and Demographics on Mid and Early Career Pay"
 author: Jonathon Purvis
 institute: University Of Scranton
 format: 
   html:
     code-fold: true
     echo: true
-    
+    toc: true
+    toc-location: left
+    self-contained: true
+bibliography: report_bib.bib
 ---
+
+```{r}
+#| echo: false
+#| include: false
+
+library(tidyverse) # wrangling, plots etc.
+library(tidymodels) # modeling
+library(skimr) # data summary
+library(RColorBrewer) # for plot colors
+library(GGally) # paired plots
+library(patchwork) # for combining plots
+library(dplyr)
+library(plotly)
+library(quarto)
+
+tuition_cost <- read_csv("../data/tuition_cost.csv")
+tuition_income <- read_csv("../data/tuition_income.csv")
+salary_potential <- read_csv("../data/salary_potential.csv")
+historical_tuition <- read_csv("../data/historical_tuition.csv")
+diversity_school <- read_csv("../data/diversity_school.csv")
+combined_data <- read_csv("../data/combined_data.csv")
+states_df <- map_data("state")
+```
 
 ## Executive Summary
 
-Paragraph or two describing project
-
+In this project, we delve into the exploration of factors influencing mid/early career pay statistics among educational institutions. Our focus is to analyze the predictors that contribute to variations in mid/early career pay outcomes, utilizing a comprehensive dataset encompassing diverse attributes of institutions, student demographics, and alumni outcomes.
 
 ## Background
 
+Higher education is undergoing significant changes, and as students navigate rising tuition costs, it becomes crucial to understand what truly influences career salary. Over the years, one critical aspect that has garnered increasing attention is the trajectory of mid and early career pay for graduates. This metric serves as a vital indicator of the return on investment in education. We aim to understand the relationship between educational variables, institutional characteristics, and eventual career payoffs for graduates.
 
-### Initial Research Question
+## Initial Research Question
 
+We would like to know what impacts career salary the most. Given that higher education is seeing massive changes in things like tuition cost, diversity, and number of students enrolled, those factors may have an impact in shaping the career trajectories of graduates. **How do factors such as tuition costs, institutional type, stem-percentage, total enrollment, state, and student demographics contribute to the variations in mid/early career pay, and what insights can be gained to inform the future direction of higher education?**
 
-### 
+## Approach to Research
 
+To address our initial research question on the factors influencing mid/early career pay statistics in higher education, we will conduct a comprehensive analysis using a diverse dataset covering various attributes of educational institutions, student demographics, and alumni outcomes. Rather than focusing on a single case study, our approach involves examining a broad spectrum of colleges and universities, ensuring a representative sample for insightful analyses. By adopting this inclusive approach, we aim to capture the complexity in higher education systems, allowing us to identify patterns and correlations across a wide range of educational settings. This broader perspective will enhance the generalizability of our findings and provide a more comprehensive understanding of the predictors shaping mid/early career pay outcomes.
 
 ## Data Collection and Documentation
 
-Data package project
+To address our primary question, we utilized multiple datasets from the "College Tuition, Diversity, and Pay" tidy Tuesday project by Jesse Mostipak [@Mostipak_2020], hosted on GitHub. You can find the original datasets and additional details on the [tidytuesday GitHub repository](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-03-10/readme.md).
 
+The datasets were all originally sourced from the US Department of Education. However, due to the wide format and presence of unnecessary data, we performed cleaning operations. The complete cleaning scripts are available in the `R/cleaning_scripts` directory.
+
+The datasets employed in our analysis are outlined below.
+
+### Tuition Cost Data
+
+**Source:** [Chronicle of Higher Education](https://www.chronicle.com/article/tuition-and-fees-1998-99-through-2018-19/d).
+
+**Description:** To examine the cost of education across various institutions, we collected data on tuition expenses from the "tuition_cost.csv" dataset. The dataset includes the following variables:
+
+-   **name (character):** School name
+-   **state (character):** State name
+-   **state_code (character):** State Abbreviation
+-   **type (character):** Type of institution (Public, private, for-profit)
+-   **degree_length (character):** Duration of the degree (4-year or 2-year)
+-   **room_and_board (double):** Room and board cost in USD
+-   **in_state_tuition (double):** Tuition for in-state residents in USD
+-   **in_state_total (double):** Total cost for in-state residents in USD (sum of room & board + in-state tuition)
+-   **out_of_state_tuition (double):** Tuition for out-of-state residents in USD
+-   **out_of_state_total (double):** Total cost for out-of-state residents in USD (sum of room & board + out-of-state tuition)
+
+**Data Processing:** The data underwent cleaning and filtering to ensure consistency and accuracy. No missing values were observed in essential fields.
+
+The code to accomplish this is in `R/cleaning_scripts/get_college_cost_income_data.R`.
+
+### Tuition Income Data
+
+**Source:** [Chronicle of Higher Education](https://www.chronicle.com/article/tuition-and-fees-1998-99-through-2018-19/d).
+
+**Description:** We obtained data on tuition income from the "tuition_income.csv" dataset. The dataset includes the following variables:
+
+-   **name (character):** School name
+-   **state (character):** State Name
+-   **total_price (double):** Total price in USD
+-   **year (double):** Year
+-   **campus (character):** On or off-campus
+-   **net_cost (double):** Net-cost - average actually paid after scholarship/award
+-   **income_lvl (character):** Income bracket
+
+**Data Processing:** The data underwent cleaning to handle missing values and ensure uniformity in variable formats.
+
+The code to accomplish this is in `R/cleaning_scripts/get_coolege_cost_data.R`.
+
+### Salary Potential Data
+
+**Source:** [Payscale](https://www.payscale.com/college-salary-report/best-schools-by-state/bachelors/new-hampshire).
+
+**Description:** We collected information on salary potential from the "salary_potential.csv" dataset. The dataset includes the following variables:
+
+-   **rank (double):** Potential salary rank within the state
+-   **name (character):** Name of school
+-   **state_name (character):** State name
+-   **early_career_pay (double):** Estimated early career pay in USD
+-   **mid_career_pay (double):** Estimated mid-career pay in USD
+-   **make_world_better_percent (double):** Percent of alumni who think they are making the world a better place
+-   **stem_percent (double):** Percent of student body in STEM fields
+
+**Data Processing:** The data was cleaned and formatted to handle missing values and ensure numerical variables are in a consistent format.
+
+The code to accomplish this is in `R/cleaning_scripts/get_salary_potential_data.R`.
+
+### Diversity Data
+
+**Source:** [US Deparment of Education](https://www.ed.gov/).
+
+**Description:** We obtained data on diversity from the "diversity_school.csv" dataset. The dataset includes the following variables:
+
+-   **name (character):** School name
+-   **total_enrollment (double):** Total enrollment of students
+-   **state (character):** State name
+-   **category (character):** Group/Racial/Gender category
+-   **enrollment (double):** Enrollment by category
+
+**Data Processing:** The data underwent cleaning to handle missing values and ensure consistency in variable formats.
+
+The code to accomplish this is in `R/cleaning_scripts/get_diversity_data.R`.
+
+### Combined Data
+
+In this analysis, we integrated information from multiple datasets to gain a comprehensive understanding of the factors influencing salary potential. The following datasets were combined:
+
+-   **Salary Potential and Tuition Cost:** We merged the `salary_potential` and `tuition_cost` datasets based on the 'name' column. This combination allowed us to explore the relationship between early and mid-career pay and factors such as STEM percentage and school characteristics.
+
+-   **Salary Potential and Diversity Statistics:** The `salary_potential` dataset was joined with `diversity_school` based on the 'name' column. This integration enabled us to investigate the impact of factors like race, total enrollment, and state on early and mid-career pay.
+
+-   **Salary Potential and Tuition Income:** We combined the `salary_potential` and `tuition_income` datasets using the 'name' column. This fusion allowed us to analyze the associations between early career pay and variables such as net cost, total price, and income bracket.
+
+-   **Salary Potential and School Type:** The `salary_potential` dataset was linked with `tuition_cost` using the 'name' column. This combination facilitated the examination of early career pay concerning school type.
+
+These combinations were performed to enrich our analysis and provide a more complete perspective on the factors influencing salary potential. Each merged dataset contributed unique dimensions to the overall investigation, allowing for a comprehensive exploration of the variables affecting early and mid-career pay.
 
 ## Exploratory Analysis and Observations
 
+The quarto document `R/eda_v2.qmd` contains the full exploratory analysis and all corresponding code.
+
+### Potential Response Variables
+
+#### Early Career Pay
+
+@fig-early-pay displays the distribution of Early Career Pay, providing insights into the spread and central tendency of salaries as graduates enter the workforce.
+
+```{r}
+#| label: fig-early-pay
+#| fig-cap: Histogram showing the distribution of Early Career Pay.
+#| fig-alt: Histogram illustrating the spread and central tendency of Early Career Pay.
+#| message: false
+
+early_pay_distribution <- ggplot(salary_potential, aes(x = early_career_pay)) +
+  geom_histogram(color = "#512d6d", fill = "lightblue") +
+  labs(x = "Early Career Pay (USD)", y = "Count") +
+  theme_minimal()
+
+early_pay_distribution
+```
+
+#### Mid Career Pay
+
+@fig-mid-pay displays the distribution of Mid Career Pay, offering insights into the salary landscape as professionals progress in their careers.
+
+```{r}
+#| label: fig-mid-pay
+#| fig-cap: Histogram showing the distribution of Mid Career Pay.
+#| fig-alt: Histogram illustrating the spread and central tendency of Mid Career Pay.
+#| message: false
+
+mid_pay_distribution <- ggplot(salary_potential, aes(x = mid_career_pay)) +
+  geom_histogram(color = "#512d6d", fill = "lightblue") +
+  labs(x = "Mid Career Pay (USD)", y = "Count") +
+  theme_minimal()
+
+mid_pay_distribution
+```
+
+By focusing on Early and Mid Career Pay, these visualizations set the foundation for further analyses and model development, helping understand the salary dynamics as individuals progress in their careers.
+
+### Potential Predictor Variables
+
+In this section, we explore several variables that have the potential to be used as predictors in our analysis. We focus on understanding the distributions and patterns of these variables to gain insights into their potential impact on the response variable.
+
+Potential predictor variables plots include:
+
+-   @fig-potential
+
+    -   Stem percentage
+
+    -   Percentage of alumni who believe they are making the world a better place
+
+-   @fig-cost
+
+    -   Institution type (public, private, for profit)
+
+    -   Degree length
+
+-   @fig-income
+
+    -   Total Price
+
+    -   Net Cost
+
+-   @fig-diversity
+
+    -   Total enrollment
+
+    -   Diversity
+
+-   State
+
+```{r}
+#| warning: false
+#| label: fig-potential
+#| fig-cap: Histogram showing the distributions of stem percent and make world better perent.
+#| fig-alt: Histogram showing the distributions of stem percent and make world better perent.
+#| message: false
+#| code-fold: false
+#| echo: false
 
 
+g1 <- salary_potential %>% 
+  ggplot(aes(x = stem_percent)) +
+  geom_histogram(binwidth = 2, fill = "lightblue", color = "darkblue", alpha = 0.7) +
+  labs(title = "Distribution of STEM Percentage", x = "STEM Percentage", y = "Frequency") +
+  theme_minimal()
+
+g2 <- salary_potential %>%
+  ggplot(aes(x = make_world_better_percent)) +
+  geom_histogram(binwidth = 2, fill = "lightblue", color = "darkblue", alpha = 0.7) +
+  labs(title = "Distribution of Make World Better Percent", 
+       x = "'Make World Better' Percentage", y = "Frequency") +
+  theme_minimal()
+
+(g1 + g2)
+```
+
+```{r}
+#| label: fig-cost
+#| fig-cap: Pie charts of tuition cost and degree length
+#| fig-alt: Pie charts of tuition cost and degree length
+#| code-fold: false
+#| echo: false
+
+g3 <- ggplot(tuition_cost, aes(x = "", fill = type)) +
+  geom_bar(width = 1, color = "white", alpha = 0.7) +
+  coord_polar("y") +
+  labs(title = "Distribution of Institution Types", fill = "Institution Type") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+g4 <- ggplot(tuition_cost, aes(x = "", fill = degree_length)) +
+  geom_bar(width = 1, color = "white", alpha = 0.7) +
+  coord_polar("y") +
+  labs(title = "Distribution of Degree Lengths", fill = "Degree Length") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+(g3 + g4)
+```
+
+```{r}
+#| label: fig-income
+#| fig-cap: Histogram of total price and net cost
+#| fig-alt: Histogram of total price and net cost
+#| code-fold: false
+#| echo: false
+
+
+
+g5 <- ggplot(tuition_income, aes(x = total_price)) +
+  geom_histogram(fill = "lightblue", color = "darkblue", bins = 30, alpha = 0.7) +
+  labs(title = "Distribution of Total Price", x = "Total Price", y = "Count") +
+  theme_minimal()
+
+g6 <- ggplot(tuition_income, aes(x = net_cost)) +
+  geom_histogram(fill = "lightblue", color = "darkblue", bins = 30, alpha = 0.7) +
+  labs(title = "Distribution of Net Cost", x = "Net Cost", y = "Count") +
+  theme_minimal()
+
+(g5 + g6)
+```
+
+```{r}
+#| label: fig-diversity
+#| fig-cap: Plots of diversity variables
+#| fig-alt: Plots of diversity variables
+#| code-fold: false
+#| message: false
+#| warning: false
+#| echo: false
+
+
+filtered_data <- diversity_school %>%
+  filter(total_enrollment > 0)
+
+
+# Histogram for total enrollment
+g7 <- ggplot(filtered_data, aes(x = log(total_enrollment))) +
+  geom_histogram(binws = 25, fill = "lightblue", color = "darkblue") +
+  labs(title = "Histogram of Total Enrollment", x = "Total Enrollment", y = "Frequency") +
+  theme_minimal()
+
+g8 <- ggplot(diversity_school, aes(x = category, y = enrollment)) +
+  geom_bar(stat = "identity", fill = "lightblue", color = "lightblue", alpha = 0.7) +
+  labs(title = "Enrollment by Category", x = "Category", y = "Enrollment Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+(g7 + g8)
+```
+
+### Variable Relationships
+
+@fig-percentages shows two scatter plots, one for the relationship between Mid Career Pay and "Make World Better" Percent and the other for the relationship between Mid Career Pay and STEM Percent. Both plots reveal the associations between these variables, providing insights into potential patterns or trends.
+
+```{r}
+#| label: fig-percentages
+#| fig-cap: Scatter plots showing the relationship between 1) Mid Career Pay and "Make World Better" Percent and 2) Mid Career pay and STEM Percent.
+#| fig-alt: Two scatter plots, one for "Make World Better" Percent and another for STEM Percent, both showing their relationship with Mid Career Pay.
+#| warning: false
+#| message: false
+
+# Make world better percent, mid pay
+mbp <- ggplot(salary_potential, aes(x = make_world_better_percent, y = mid_career_pay)) +
+  geom_point(data = subset(salary_potential, !is.na(make_world_better_percent))) +
+  geom_smooth(color = "orange") + 
+  labs(
+       x = "% of Alumni Making the World Better",
+       y = "Mid Career Pay (USD)")
+
+
+# Stem percent, mid pay
+spp <- ggplot(salary_potential, aes(x = stem_percent, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(color = "orange") +  
+  labs(x = "STEM Percentage", y = "Mid Career Pay (USD)")
+
+(mbp + spp)
+```
+
+In the plot on the left, the relationship between Mid Career Pay and 'Make World Better' Percent appears less pronounced, suggesting a potential lack of a significant correlation. On the contrary, the plot on the right reveals a compelling positive correlation between STEM percentage and Mid Career Pay. The strong indication of this positive correlation suggests that a higher STEM percentage in institutions may be associated with increased mid career pay.
+
+@fig-institutional-characteristics displays boxplots depicting the distribution of Early and Mid Career Pay based on institutional characteristics such as institution type and degree length. These visualizations offer a comparative view of pay across different institution types and degree lengths.
+
+```{r}
+#| label: fig-institutional-characteristics
+#| fig-cap: Distribution of Early and Mid Career Pay based on Institutional Characteristics
+#| fig-alt: Boxplots showing the distribution of early and mid career pay based on institution type and degree length.
+
+# Merge salary potential and tuition cost
+salary_cost <- merge(salary_potential, tuition_cost, by = "name", all.x = TRUE)
+
+# Type, early pay
+t1 <- ggplot(filter(salary_cost, !is.na(type) & early_career_pay), 
+       aes(x = type, y = early_career_pay)) +
+      geom_boxplot() +
+      labs(x = "Institution Type", y = "Early Career Pay (USD)")
+
+
+# Type, mid pay
+t2 <- ggplot(filter(salary_cost, !is.na(type) & mid_career_pay), 
+       aes(x = type, y = mid_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Institution Type", y = "Mid Career Pay (USD)")
+
+
+# Degree length, early pay
+dl1 <- ggplot(filter(salary_cost, !is.na(degree_length) & early_career_pay), 
+       aes(x = degree_length, y = early_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Degree Length", y = "Early Career Pay (USD)")
+
+
+# Degree length, mid pay
+dl2 <- ggplot(filter(salary_cost, !is.na(degree_length) & mid_career_pay), 
+       aes(x = degree_length, y = mid_career_pay)) +
+  geom_boxplot() +
+  labs(x = "Degree Length", y = "Mid Career Pay (USD)")
+
+(t1 + t2) / (dl1 + dl2)
+```
+
+In the exploratory box plots in @fig-institutional-characteristics, we observe interesting patterns in the distribution of pay based on institutional characteristics. The two leftmost plots, which focus on Early Career Pay, show less distinct trends, indicating a lack of strong correlation. However, as we shift our attention to the two rightmost plots representing Mid Career Pay, the differences become more apparent.
+
+Notably, there is a discernible trend suggesting a slight increase in Mid Career Pay for private institutions compared to public institutions. Similarly, the distinction between 4-year and 2-year degree lengths becomes more pronounced in Mid Career Pay, hinting at potential impacts of institutional type and degree length on career pay trajectories."
+
+@fig-enrollment shows a scatter plot illustrating the relationship between Total Enrollment and Mid Career Pay. This plot helps discern any potential correlation or trend between the total number of students enrolled and mid career pay.
+
+```{r}
+#| label: fig-enrollment
+#| fig-cap: Distribution of Mid Career Pay based on Total Enrollment
+#| fig-alt: Scatter plot showing the relationship between total enrollment and mid career pay.
+#| message: false
+
+# Merge diversity school and salary potential
+diversity_salary <- left_join(diversity_school, salary_potential, by = "name")
+
+diversity_salary <- diversity_salary %>%
+  filter(!is.na(mid_career_pay))
+
+# Total enrollment, mid pay
+ggplot(diversity_salary, aes(x = total_enrollment, y = mid_career_pay)) +
+  geom_point() +
+  geom_smooth(color = "orange") + 
+  labs(title = "Mid Career Pay vs Total Enrollment",
+       x = "Total Enrollment",
+       y = "Mid Career Pay (USD)")
+```
+
+In the scatter plot presented in @fig-enrollment, there appears to be no clear correlation between Mid Career Pay and Total Enrollment. The points are scattered without exhibiting a discernible pattern, suggesting that the total enrollment size of institutions may not strongly influence Mid Career Pay.
+
+@fig-entry-chloropleth shows a chloropleth map representing Early Career Pay by state. The map provides a geographical overview, highlighting variations in early career pay across different states.
+
+```{r}
+#| echo: false
+#| include: false
+#| code-fold: false
+
+# Standardize state names
+states_df <- states_df %>%
+  mutate(region = tolower(gsub("[_ ]", "", region)))
+
+salary_potential_cleaned <- salary_potential %>%
+  mutate(state_name = tolower(gsub("[_ ]", "", state_name))) %>%
+  mutate(state_name = gsub("-", "", state_name))
+
+# Left join the data sets, keeping all state boundaries
+merged_data <- left_join(states_df, salary_potential_cleaned, by = c("region" = "state_name"))
+```
+
+```{r}
+#| label: fig-entry-chloropleth
+#| fig-cap: Chloropleth Map for Early Career Pay by State
+#| fig-alt: Map showing early career pay across different states.
+
+entry_pay_chloropleth <-merged_data %>%
+  ggplot() +
+  geom_polygon(aes(long, lat, group = group, fill = early_career_pay), color = "darkgray") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", labels = scales::comma) +  
+  labs(title = "Early Career Pay by State", fill = "Early Career Pay") +
+  theme_minimal()
+
+entry_pay_chloropleth
+```
+
+In the chloropleth map depicting Early Career Pay by state @fig-entry-chloropleth, noticeable regional variations emerge. States such as California, Connecticut, Pennsylvania, New York, New Jersey, Colorado, Texas, and New Jersey appear to exhibit higher Early Career Pay, as indicated by the darker shades on the map. This suggests potential regional disparities in early career pay, with these states showing higher average pay levels.
+
+@fig-mid-chloropleth shows a chloropleth map representing Mid Career Pay by state. This map offers insights into the geographical distribution of mid career pay across different states.
+
+```{r}
+#| label: fig-mid-chloropleth
+#| fig-cap: Chloropleth Map for Mid Career Pay by State
+#| fig-alt: Map showing early mid pay across different states.
+
+mid_pay_chloropleth <- merged_data %>%
+  ggplot() +
+  geom_polygon(aes(long, lat, group = group, fill = mid_career_pay), color = "darkgray") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", labels = scales::comma) +  
+  labs(title = "Mid Career Pay by State", fill = "Mid Career Pay") +
+  theme_minimal()
+
+mid_pay_chloropleth
+```
+
+In the chloropleth map illustrating Mid Career Pay by state @fig-mid-chloropleth, the identified states with higher Mid Career Pay---California, Connecticut, Pennsylvania, New York, New Jersey, Colorado, Texas, and Georgia, Virginia, North Carolina, and Indiana---continue to exhibit darker shades. This reinforces the observation of regional variations, with these states consistently demonstrating higher average Mid Career Pay levels.
+
+These exploratory visualizations provide an initial understanding of potential predictor variables, setting the foundation for more in-depth analyses and modeling.
+
+## Models
+
+
+
+## Model Results
+
+@fig-early-with-state displays the results of doing bootstrap sampling and manually finding the confidence intervals for our predictor variables.
+
+```{r}
+#| label: fig-early-with-state
+#| fig-cap: Boostrap Resampling Confidence Intervals
+#| fig-alt: Boostrap Resampling Confidence Intervals
+
+fit_lr_boots <- function(split){
+  glm(early_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent,
+      data=analysis(split))
+}
+
+boots <- bootstraps(combined_data, times = 2000)
+
+boot_models <-
+  boots %>% 
+  mutate(model = map(splits, fit_lr_boots),
+         coef_info = map(model, tidy))
+
+boot_coefs <- 
+  boot_models %>% 
+  unnest(coef_info)
+
+percentile_intervals <- int_pctl(boot_models, coef_info)
+
+ggplot(boot_coefs, aes(estimate)) +
+  geom_histogram(bins = 30,color="white") +
+  facet_wrap( ~ term, scales = "free") +
+  geom_vline(aes(xintercept = .lower), data = percentile_intervals, col = "blue") +
+  geom_vline(aes(xintercept = .upper), data = percentile_intervals, col = "blue")
+```
+
+
+@fig-mid-with-state shows the results of finding the confidence intervals of our predictors using linear regression. Due to the lack of state data the error bars are large. However, it still indicates that some states have a significant impact on career salaries.
+
+```{r}
+#| label: fig-mid-with-state
+#| fig-cap: Linear Regression Confidence Intervals with State Included.
+#| fig-alt: Linear Regression Confidence Intervals with State Included.
+
+combined_data <- combined_data %>%
+  mutate(log_early_career_pay = log(early_career_pay),
+         log_mid_career_pay = log(mid_career_pay))
+
+# Model for pay ~ 
+combined_data_split <- initial_split(combined_data)
+combined_data_train <- training(combined_data_split)
+combined_data_test <- testing(combined_data_split)
+
+
+# Early Pay by everything
+# ---------
+early_pay_intervals <- reg_intervals(log_early_career_pay ~ state + total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_early_coeffs <- early_pay_intervals %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_early_coeffs
+
+
+# Mid Pay by everything
+# ---------
+mid_pay_intervals <- reg_intervals(log_mid_career_pay ~ state + total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs <- mid_pay_intervals %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs
+```
+
+To examine influences on estimated early and mid career salaries, we start with a linear regression model with the log of salaries as the response variable and the state, total enrollment, total price, year, net cost, percentage of alumni who believe they are making the world better, and stem percentage of the school. We use the bootstrap to estimate the sampling distributions and confidence intervals for the model coefficients. @fig-test shows the results. We observe that the confidence intervals for the coefficients for enrollment, net cost, stem percent, total enrollment, and total price. Thus, there is evidence of a relationship between these variables and the salary. Specifically, evidence suggests that there is a slight decrease in pay corresponding to an increase in percentage of alumni who believe they are making the world a better place. On the other hand, there is a slight to moderate increase in pay corresponding to an increase in stem percentage. [@Silge_2022]
+
+```{r}
+#| label: fig-test
+#| fig-cap: Linear Regression Confidence Intervals without State Included.
+#| fig-alt: Linear Regression Confidence Intervals without State Included.
+
+# Same thing without state
+
+# Early Pay by !state
+# ---------
+early_pay_intervals_2 <- reg_intervals(log_early_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_early_coeffs_2 <- early_pay_intervals_2 %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_early_coeffs_2
+
+
+# Mid Pay by !state
+# ---------
+mid_pay_intervals_2 <- reg_intervals(log_mid_career_pay ~ total_enrollment + enrollment + 
+      total_price + year + net_cost + make_world_better_percent + stem_percent, data= combined_data_train,
+                                  keep_reps = TRUE)
+
+p_mid_coeffs_2 <- mid_pay_intervals_2 %>%
+  ggplot(aes(x=.estimate,y=term)) + 
+  geom_point(size=2) + 
+  geom_errorbar(aes(xmin=.lower,xmax=.upper),width=0.1) + 
+  geom_vline(xintercept = 0.0,linetype = "dashed") +
+  labs(x="Coefficient Estimate",y="Predictor")
+
+p_mid_coeffs_2
+```
+
+Overall modeling shows that there is definitely a correlation between state, STEM percent, and make world better percent on career salaries.
+
+## Conclusions
+
+In summary, our exploration into the factors influencing mid/early career pay in higher education has revealed key insights. By analyzing a diverse dataset, we identified potential predictor variables such as STEM percentage, institutional type, total enrollment, etc. Our exploratory analysis hinted at intriguing relationships, including a positive correlation between STEM emphasis and mid-career pay.
+
+The application of linear regression models provided further understanding, suggesting associations between variables like enrollment, net cost, and STEM percentage with mid/early career pay. Recommendations include fostering STEM education and exploring the impact of institutional characteristics.
+
+While our study contributes valuable insights, limitations exist, and further research is encouraged. We thank the data contributors, and our code and data are available for transparency on our GitHub repository.
+
+In conclusion, this research enhances our understanding of mid/early career pay dynamics, informing decisions in higher education.
+
+## Acknowledgements
+
+All data used in this project are from publicly available sources. The data for all variables used were obtained from the [tidytuesday Github Repository](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-03-10/readme.md). All code and data used in the analysis for this project is available on a [GitHub repository](https://github.com/Jon-Purvis/semester_project_purvis).
+
+## References
+
+::: {#refs}
+:::
+
+::: {.callout-tip collapse="true"}
+## Expand for Session Info
+
+```{r}
+#| echo: false
+
+
+library(sessioninfo)
+# save the session info as an object
+pkg_sesh <- session_info(pkgs = "attached")
+
+# get the quarto version
+quarto_version <- system("quarto --version", intern = TRUE)
+
+# inject the quarto info
+pkg_sesh$platform$quarto <- paste(
+  system("quarto --version", intern = TRUE), 
+  "@", 
+  quarto::quarto_path()
+  )
+
+# print it out
+pkg_sesh
+```
+:::

@@ -1,0 +1,189 @@
+---
+title: "Data Package"
+author: "Jon Purvis"
+format: html
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+
+all_schools_df <- read_csv("raw_data/all_schools.csv")
+diversity_school_df <- read_csv("raw_data/diversity_school.csv")
+historical_tuition_df <- read_csv("raw_data/historical_tuition.csv")
+salary_potential_df <- read_csv("raw_data/salary_potential.csv")
+student_diversity_df <- read_csv("raw_data/student_diversity.csv")
+tuition_cost_df <- read_csv("raw_data/tuition_cost.csv")
+tuition_income_df <- read_csv("raw_data/tuition_income.csv")
+```
+
+## Motivation
+
+I chose data with the intention of analyzing college tuition, diversity, and pay.
+
+\
+
+## Raw Data
+
+#### Who created the data and where did you obtain it from?
+
+There are multiple different data sets that came from different sources (all originally from the US Department of Education):
+
+> Historical averages from the [NCES](https://nces.ed.gov/fastfacts/display.asp?id=76) - cover 1985-2016.
+
+> Tuition and fees by college/university for 2018-2019, along with school type, degree length, state, in-state vs out-of-state from the [Chronicle of Higher Education](https://www.chronicle.com/interactives/tuition-and-fees).
+
+> Diversity by college/university for 2014, along with school type, degree length, state, in-state vs out-of-state from the [Chronicle of Higher Education](https://www.chronicle.com/interactives/student-diversity-2016).
+
+> Example diversity graphics from [Priceonomics](https://priceonomics.com/ranking-the-most-and-least-diverse-colleges-in/).
+
+> Average net cost by income bracket from [TuitionTracker.org](https://www.tuitiontracker.org/).
+
+> Example price trend and graduation rates from [TuitionTracker.org](https://www.tuitiontracker.org/school.html?unitid=228778)
+
+> Salary potential data comes from [payscale.com](https://www.payscale.com/college-salary-report/best-schools-by-state/bachelors/new-hampshire).
+
+\
+
+#### Why was the data collected?
+
+The exact reason the data was collected was not listed; however, it was likely collected to:
+
+-   Inform decisions about
+    -   Education
+    -   Policy
+    -   Rankings
+-   Promote diversity and inclusion
+-   Analyze economic trends
+-   Track tuition changes over time
+-   Allocate financial aid
+-   Enhance transparency in higher education
+
+\
+
+#### From what population(s) has the data been sampled?
+
+> **Colleges and Universities:** The data set includes data from a wide range of colleges and universities across the United States, both public and private institutions.
+
+> **Students:** Data related to diversity, income levels, and net costs were sampled from student populations within these institutions.
+
+> **Recent Graduates:** Salary potential data was sampled from recent graduates of these colleges and universities, providing insights into early and mid-career earnings.
+
+> **States:** The data was segmented by states, as indicated by state-level information, allowing for regional analyses and comparisons.
+
+> **Academic Years:** Historical tuition data was sampled from various academic years, covering a range of time periods, to analyze changes over time.
+
+> **Income Brackets:** Data related to income levels and net costs were sampled across different income brackets, representing a diverse range of students and families.
+
+\
+
+#### Data Format and File Count
+
+The data set used for this analysis is comprised of multiple CSV (Comma-Separated Values) files and some html pages (web-scraping). They each represent a different aspect of college tuition, diversity, and salary potential.
+
+There are a total of 10 raw data set files.
+
+\
+
+#### Data Structure
+
+I have 7 csv files that are in tabular format and two sources of data were scraped from html websites. The data in each row and column varies depending on the raw data file. The names of the data files are indicative of what type of data it will have included.
+
+> all_schools data: rows: 6,521 columns: 406
+
+> diversity_school data: rows: 50,655 columns: 5
+
+> historical_tuition data: rows: 270 columns: 4
+
+> salary_potential data: rows: 935 columns: 7
+
+> student_diversity data: rows: 4,605 columns: 13
+
+> tuition_cost data: rows: 2,973 columns: 10
+
+> tuition_income data: rows: 209,012 columns: 7
+
+\
+
+#### Data Issues
+
+Generally the data has a few different types of issues. The main issues addressed in the cleaning scripts are: missing values, wide formats, and inconsistent names.
+
+\
+
+## Cleaned Data
+
+-   `get_college_cost_income_data.R`:
+
+    1.  **`janitor::clean_names()`** to make column names consistent.
+
+    2.  **`select()`**: The code selects specific columns, including "name" (institution name), "state" (state abbreviation), and columns containing information about total prices for in-state students.
+
+    3.  **`pivot_longer()`**: reshapes the data from wide to long format, creating new columns "year," "category," and "total_price" for each combination of year and category.
+
+    4.  **`mutate()`**: The code extracts the year from the "category" column, removes the prefix "total_price_for_in_state_students_living\_", and creates a "campus" column based on whether the category contains "on_campus" or "off_campus."
+
+    5.  **`filter(!is.na(total_price))`**: Rows with missing values in the "total_price" column are removed from the data set to ensure data quality.
+
+    6.  **`select(-category)`**: The "category" column is removed as it is no longer needed.
+
+    7.  **`select()`**: Specific columns related to institution name, state abbreviation, and columns starting with "average_net_price_income" are selected.
+
+    8.  **`pivot_longer()`**: Similar to the tuition cost data, the data is reshaped from wide to long format.
+
+    9.  **`filter(!is.na(net_cost))`**: Rows with missing values in the "net_cost" column are filtered out.
+
+    10. **`mutate()`**: The code extracts the year from the "category" column, creates an "income_lvl" column based on certain patterns, and formats the year.
+
+    11. **`select(-category)`**: The "category" column is removed.
+
+    12. **`left_join()`**: The code performs a left join on the "raw_cost" and "net_cost" data frames based on the columns "name," "year," and "state."
+
+    13. **`filter(!is.na(net_cost))`**: Rows with missing values in the "net_cost" column are filtered out again.
+
+    14. **`write_csv()`**: The final cleaned and merged data set is saved as a CSV file named `tuition_income.csv` in the `data` directory.
+
+-   `get_diversity_data_R:`
+
+    1.  **`read_html`**: The code reads an HTML file named "Tuition and Fees, 1998-99 Through 2018-19 - The Chronicle of Higher Education.htm".
+    2.  **`get_id`** and **`get_college`**: are defined to scrape data from the HTML table.
+    3.  The resulting tibble is saved in the "clean_tuition" data frame.
+    4.  **`read_html`**: The code reads an HTML file named "Student Diversity at More Than 4,600 Institutions - The Chronicle of Higher Education.htm".
+    5.  The HTML table data is scraped and converted into a tibble.
+    6.  Column names are cleaned.
+    7.  Another data set is loaded from a CSV file named `student_diversity.csv` and is assigned to the **`diversity_tab`** data frame.
+    8.  Clean the diversity data by renaming columns, extracting state information, and pivoting the data from wide to long format.
+    9.  The cleaned diversity data is merged with the cleaned tuition data based on institution name and state, and various filtering and aggregation operations are performed.
+    10. The resulting tibble is saved in the `final_table` data frame.
+    11. The cleaned data tables (`clean_tuition` and `final_table`) are saved as CSV files in the `data` directory with appropriate names such as `tuition_cost.csv` and `college_diversity.csv.`
+
+-   get_historical_data:
+
+    1.  The code defines a URL and uses the **`read_html`** function from the "rvest" package to retrieve the HTML content from the specified URL.
+    2.  The HTML table data is extracted using **`html_table`** and stored as a list. The first element of the list, which contains the desired table, is accessed using **`.[[1]]`**.
+    3.  Column names are cleaned using the **`janitor::clean_names`** function to ensure consistency and readability.
+    4.  The code slices rows from the 4th row onward and renames columns to meaningful names such as "year," "All Constant," "4 Year Constant," and so on. It also replaces certain characters in the "year" column to make it consistent.
+    5.  Three data frames, **`all_school`**, **`public_school`**, and **`private_school`**, are created by further processing the data. They filter and select specific rows and columns to create subsets of the data based on school types and years.
+    6.  The code uses the **`pivot_longer`** function to transform the wide-format data into long-format data, specifically converting columns from "All Constant" to "2 Year Current" into a single column "tuition_cost."
+    7.  The "tuition_cost" column is converted to numeric using **`parse_number`**.
+    8.  The three subsets of data, **`all_school`**, **`public_school`**, and **`private_school`**, are combined into a single data frame using **`bind_rows`**.
+    9.  The final combined data frame is saved as a CSV file named `historical_tuition.csv` using **`write_csv`**.
+
+-   get_salary_potential:
+
+    1.  **`scrape_salary`** Function: This function scrapes salary data for colleges in a specific state. It takes the **`state_name`** as an argument.
+    2.  The URL to scrape is generated using **`glue::glue`** by inserting the **`state_name`** into the URL template.
+    3.  The HTML content of the web page is retrieved using **`read_html`**, and the table data is extracted using **`html_table`**.
+    4.  The column names of the extracted table are cleaned and renamed to more meaningful names.
+    5.  Several columns such as "rank," "name," "type," "early_career_pay," "mid_career_pay," "make_world_better_percent," and "stem_percent" are processed to remove unnecessary text and convert numeric values using functions like **`str_remove`** and **`parse_number`**.
+    6.  The **`state_name`** is added as a new column in the data frame.
+    7.  The code uses **`select`** to arrange the columns in the desired order and exclude the "type" column.
+    8.  The **`map`** function is used to iterate over a list of state names. Inside the loop, the **`scrape_salary`** function is called for each state.
+    9.  The resulting data frames for each state are combined into a single data frame using **`bind_rows`**.
+    10. The "name" column is further processed to remove spaces in "A & M" and replace them with "A&M."
+    11. The final combined data frame is saved as a CSV file named `salary_potential.csv` using **`write_csv`**.
+
+*(Please see the various .R files for more detail.)*
